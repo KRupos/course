@@ -100,7 +100,18 @@ namespace course
         private string GetBookYear(XDocument doc)
         {
             XElement yearElement = doc.Root?.Element(fbNS + "description")?.Element(fbNS + "title-info")?.Element(fbNS + "date");
-            return yearElement?.Value ?? string.Empty;
+            string dateString = yearElement?.Value ?? string.Empty;
+            string year;
+            if (!string.IsNullOrEmpty(dateString))
+            {
+                year = dateString.Substring(0, 4);
+            }
+            else
+            {
+                year = string.Empty;
+            }
+            ;
+            return year;
         }
 
         private string GetBookCover(XDocument doc, string filePath)
@@ -124,7 +135,7 @@ namespace course
             XElement titleElement = doc.Root?.Element(fbNS + "description")?.Element(fbNS + "title-info")?.Element(fbNS + "book-title");
             string title;
             if (!string.IsNullOrWhiteSpace(titleElement?.Value))
-                title = titleElement?.Value;
+                title = titleElement?.Value.Trim();
             else
                 title = Path.GetFileNameWithoutExtension(fileName);
             return title;
@@ -141,7 +152,15 @@ namespace course
                 var lastName = author.Element(fbNS + "last-name")?.Value.Trim() ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(firstName) || !string.IsNullOrWhiteSpace(middleName) || !string.IsNullOrWhiteSpace(lastName))
                 {
-                    authorNames.Add($"{firstName} {middleName} {lastName}".Trim());
+                    if (string.IsNullOrWhiteSpace(middleName))
+                    {
+                        authorNames.Add($"{firstName} {lastName}".Trim());
+                    }
+                    else
+                    {
+                        authorNames.Add($"{firstName} {middleName} {lastName}".Trim());
+                    }
+                    
                 }
             }
             return authorNames.Any() ? string.Join(", ", authorNames) : "Неизвестный";
@@ -207,7 +226,7 @@ namespace course
             return bodyText;
         }
 
-        public static void GetImageAttributes(XElement bodyElement)
+        private static void GetImageAttributes(XElement bodyElement)
         {
             GetImageAttributesRecursive(bodyElement);
         }
@@ -235,7 +254,7 @@ namespace course
             }
         }
 
-        public string Converting(string inputFilePath)
+        private string Converting(string inputFilePath)
         {
             XDocument doc = XDocument.Load(inputFilePath);
             StringBuilder html = new StringBuilder();
@@ -243,6 +262,7 @@ namespace course
             html.AppendLine("<!DOCTYPE html>");
             html.AppendLine("<html>");
             html.AppendLine("<head>");
+            html.AppendLine("<link rel=\"stylesheet\" href=\"" + AppSettings.DefaultCSSPath() + "\">");
             html.AppendLine("<meta charset=\"utf-8\">");
             html.AppendLine("</head>");
             html.AppendLine("<body>");

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace course
 {
@@ -28,17 +29,37 @@ namespace course
             sb.Append("|Все файлы (*.*)|*.*");
             return sb.ToString();
         }
-
+        public static string pluginsDirectory()
+        {
+            string pluginsDir;
+            if (Properties.Settings.Default.PluginDirPath == "Default") {
+                pluginsDir = Path.Combine(Application.StartupPath, "plagins");
+                if (!Directory.Exists(pluginsDir))
+                {
+                    Directory.CreateDirectory(pluginsDir);
+                }
+                return pluginsDir;
+            }
+            else 
+            {
+                pluginsDir = Properties.Settings.Default.PluginDirPath;
+            }            
+            return pluginsDir;
+        }
         public static string DefaultCoverPath()
         {
+            Path.Combine(Application.StartupPath, "plagins");
             return "D:\\CodeData\\course\\locale\\DefaultCover.jpg";
         }
-
+        public static string DefaultCSSPath()
+        {
+            Path.Combine(Application.StartupPath, "plagins");
+            return "D:\\CodeData\\course\\locale\\style.css";
+        }
         public static string DefaultDBPath()
         {
             return "D:\\CodeData\\course\\locale\\meta.db";
         }
-
         public static string LibraryDirectory()
         {
             string libraryPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Библиотека ReadEscape";

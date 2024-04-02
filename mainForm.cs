@@ -6,6 +6,7 @@ using System.Data.SQLite;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,49 +18,55 @@ namespace course
 {
     public partial class mainForm : Form
     {
+        static public mainForm Instance;
         public mainForm()
         {
+            Instance = this;
             InitializeComponent();
         }
 
-        private List<IBookFormatPlugin> _plugins = new List<IBookFormatPlugin>();
+        public List<IBookFormatPlugin> _plugins = new List<IBookFormatPlugin>();
         private string test;
         private string titleBook;
 
-        private List<IBookFormatPlugin> LoadPlugins(string pluginsDirectory)
+        private void LicenseManager_FoundVerificatedKey(object sender, EventArgs e)
         {
-            List<IBookFormatPlugin> plugins = new List<IBookFormatPlugin>();
-
-            // Получение всех файлов .dll из папки pluginsDirectory
-            string[] dllFiles = Directory.GetFiles(pluginsDirectory, "*.dll");
-
-            foreach (string dllFile in dllFiles)
+            if (DateTime.Parse(LicenseManager.currentKeyInfo.ExpandedDate) > DateTime.Now)
             {
-                try
-                {
-                    // Загрузка сборки
-                    Assembly assembly = Assembly.LoadFile(dllFile);
-                    // Получение всех типов, реализующих интерфейс IBookFormatPlugin
-                    Type[] pluginTypes = assembly.GetTypes().Where(t => typeof(IBookFormatPlugin).IsAssignableFrom(t) && !t.IsInterface).ToArray();
-                    // Создание экземпляров плагинов и добавление их в список
-                    foreach (Type pluginType in pluginTypes)
-                    {
-                        IBookFormatPlugin plugin = (IBookFormatPlugin)Activator.CreateInstance(pluginType);
-                        plugins.Add(plugin);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Обработка ошибок загрузки плагина
-                    Console.WriteLine($"Ошибка загрузки плагина из файла {dllFile}: {ex.Message}");
-                }
+                mainForm.Instance.Invoke(new Action(() => mainForm.Instance.Text = "ReadEscape (Full verison)"));
             }
+            else
+            {
+                mainForm.Instance.Invoke(new Action(() => mainForm.Instance.Text = "ReadEscape (Trial verison)"));
+            }
+        }
 
-            return plugins;
+        private void UsedKeyRemoved(object sender, EventArgs args)
+        {
+            mainForm.Instance.Invoke(new Action(() => mainForm.Instance.Text = "ReadEscape (Trial verison)"));
         }
 
         private void mainForm_Load(object sender, EventArgs e)
-        {            
+        {
+            LicenseManager.UsedKeyRemoved += UsedKeyRemoved;
+            LicenseManager.FoundVerificatedKey += LicenseManager_FoundVerificatedKey; ;
+
+            LicenseManager.RefreshDevices();
+            LicenseManager.TryFindKey();
+
+            if (DateTime.Parse(LicenseManager.currentKeyInfo.ExpandedDate) > DateTime.Now)
+            {
+                mainForm.Instance.Text = "ReadEscape (Full verison)";
+            }
+            else
+            {
+                mainForm.Instance.Text = "ReadEscape (Trial verison)";
+            }
+            PluginInfo pluginInfo = new PluginInfo();
+            _plugins = pluginInfo.LoadPlugins(AppSettings.pluginsDirectory());
+
+            Console.WriteLine(AppSettings.OpenBookFilter(_plugins));
+
             CheckIfDataExists();
         }
 
@@ -79,7 +86,7 @@ namespace course
         private void LookBooksDataGridView()
         {
             booksDataGridView.DataSource = GetDataFromDataBase();
-            //selectedRow();
+            selectedRow();
         }
 
         private void selectedRow()
@@ -216,7 +223,7 @@ namespace course
 
             if (book != null)
             {
-                if (!IsBookExists(book.Title, book.Authors))
+                if (!IsBookExists(book.Title, book.Authors, book.Format))
                 {
                     //Создание директории для книги
                     Translit translit = new Translit();
@@ -229,7 +236,6 @@ namespace course
                     string firstAuthorsString = string.Join(", ", firstAuthors);
                     string authorDir = Path.Combine(AppSettings.LibraryDirectory(), firstAuthorsString);
                     Directory.CreateDirectory(authorDir);
-
                     string trTitle = translit.TranslitFileName(book.Title);
                     string bookDir = Path.Combine(authorDir, trTitle);
                     Directory.CreateDirectory(bookDir);
@@ -253,10 +259,31 @@ namespace course
                 }
                 else
                 {
-                    // Книга уже существует в базе данных, выполните необходимые действия
-                    Console.WriteLine($"Книга '{book.Title}' уже существует в базе данных.");
+                    string pathBook = book.LocalPath;
+                    if (IsBookExistsButFormatMissing(book.Title, book.Authors, book.Format))
+                    {
+                        // Копирование файла книги в новый формат
+                        string extension = Path.GetExtension(filePath).ToLower();
+                        string destFilePath = Path.Combine(pathBook, $"{book.Title} ({book.Format}){extension}");
+                        File.Copy(filePath, destFilePath, true);
+
+                        // Обновление информации о книге в XML
+                        string infoFilePath = Path.Combine(pathBook, "info.xml");
+                        Book existingBook = DeserializeBookInfo(infoFilePath);
+                        SerializeBookInfo(existingBook, infoFilePath);
+                    }
+                    else
+                    {
+                        // Книга уже существует в базе данных, выполните необходимые действия
+                        Console.WriteLine($"Книга '{book.Title}' уже существует в базе данных.");
+                    }                    
                 }
             }
+        }
+
+        private Book DeserializeBookInfo(string infoFilePath)
+        {
+            throw new NotImplementedException();
         }
 
         private void AddBook2BD(Book book, string bookDir)
@@ -264,9 +291,9 @@ namespace course
             int bookId;
             using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
             {
-                string commandline = "INSERT INTO Bookshelf ([title], [size], [language], [release_year], [file_path]) " +
-                    "VALUES (@title, @size, @language, @release_year, @file_path)" +
-                    "SELECT last_insert_rowid();";
+                string commandline = "INSERT INTO Bookshelf ([book_title], [book_size], [book_lang], [book_ryear], [book_file_path]) " +
+                    "VALUES (@title, @size, @language, @release_year, @file_path);";
+
                 using (SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
                 {
                     conn.Open();
@@ -276,11 +303,16 @@ namespace course
                     cmd.Parameters.AddWithValue("@release_year", book.Year);
                     cmd.Parameters.AddWithValue("@file_path", bookDir);
                     cmd.ExecuteNonQuery();
+                }
+                string selectline = "SELECT last_insert_rowid();";
+                using (SQLiteCommand cmd = new SQLiteCommand(selectline, conn))
+                {
                     bookId = Convert.ToInt32(cmd.ExecuteScalar());
                 }
             }
             AddAuthors(book.Authors, bookId);
-            AddGenres(book.Genre, bookId);            
+            AddGenres(book.Genre, bookId);
+            AddBookFormat(book.Format, bookId);
         }
 
         public void AddAuthors(string authorsString, int bookId)
@@ -395,17 +427,97 @@ namespace course
             }
         }
 
-        private bool IsBookExists(string title, string authors/*, string format*/)
+        public void AddBookFormat(string formatExtension, int bookId)
         {
             using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
             {
-                string query = "SELECT COUNT(*) FROM Bookshelf WHERE title = @title AND authors = @authors"/* AND format = @format"*/;
                 conn.Open();
+                int formatId = GetFormatIdByExtension(conn, formatExtension);
+                if (formatId != -1)
+                {
+                    InsertFilterFormat(conn, bookId, formatId);
+                }
+                else
+                {
+                    Console.WriteLine($"Формат с расширением {formatExtension} не найден в базе данных.");
+                }
+            }
+        }
+        private int GetFormatIdByExtension(SQLiteConnection conn, string formatExtension)
+        {
+            using (SQLiteCommand command = new SQLiteCommand("SELECT id_format FROM Formats WHERE format_extention = @FormatExtension", conn))
+            {
+                command.Parameters.AddWithValue("@FormatExtension", formatExtension);
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return reader.GetInt32(0);
+                    }
+                }
+            }
+
+            return -1; // Формат не найден
+        }
+        private void InsertFilterFormat(SQLiteConnection conn, int bookId, int formatId)
+        {
+            using (SQLiteCommand command = new SQLiteCommand("INSERT INTO FilterFormat (id_book, id_format) VALUES (@BookId, @FormatId)", conn))
+            {
+                command.Parameters.AddWithValue("@BookId", bookId);
+                command.Parameters.AddWithValue("@FormatId", formatId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private bool IsBookExists(string title, string authors, string format)
+        {
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                conn.Open();
+                string query = @"SELECT COUNT(*) FROM Bookshelf b 
+                                INNER JOIN FilterAuthor fa ON b.id_book = fa.id_book 
+                                INNER JOIN Authors a ON fa.id_author = a.id_author 
+                                INNER JOIN FilterFormat ff ON b.id_book = ff.id_book 
+                                INNER JOIN Formats f ON ff.id_format = f.id_format 
+                                WHERE b.book_title = @title AND a.author_fullname = @authors AND f.format_name = @format 
+                                GROUP BY b.id_book;";
                 using (SQLiteCommand cmd = new SQLiteCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@title", title);
                     cmd.Parameters.AddWithValue("@authors", authors);
-                    //cmd.Parameters.AddWithValue("@format", format);
+                    cmd.Parameters.AddWithValue("@format", format);
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+                    return count > 0;
+                }
+            }
+        }
+
+        private bool IsBookExistsButFormatMissing(string title, string authors, string format)
+        {
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                conn.Open();
+
+                string query = @"SELECT COUNT(*) 
+                                FROM Bookshelf b
+                                INNER JOIN FilterAuthor fa ON b.id_book = fa.id_book
+                                INNER JOIN Authors a ON fa.id_author = a.id_author
+                                WHERE b.book_title = @title
+                                AND a.author_fullname = @authors
+                                AND NOT EXISTS (
+                                    SELECT 1
+                                    FROM FilterFormat ff
+                                    INNER JOIN Formats f ON ff.id_format = f.id_format
+                                    WHERE ff.id_book = b.id_book
+                                    AND f.format_name = @format
+                                )
+                                GROUP BY b.id_book;";
+                using (SQLiteCommand cmd = new SQLiteCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@title", title);
+                    cmd.Parameters.AddWithValue("@authors", authors);
+                    cmd.Parameters.AddWithValue("@format", format);
+
                     int count = Convert.ToInt32(cmd.ExecuteScalar());
                     return count > 0;
                 }
@@ -424,7 +536,6 @@ namespace course
             Fb2Reader br = new Fb2Reader();
             if (br.CanReadFormat(filePath))
             {   
-                br.ReadBook(filePath);
                 return br.InfoBook(filePath);
             }
             return null;
@@ -441,7 +552,7 @@ namespace course
 
         private void booksDataGridView_RowEnter(object sender, DataGridViewCellEventArgs e)
         {
-            //selectedRow();
+            selectedRow();
         }
 
         private void btnReadBook_Click(object sender, EventArgs e)
@@ -450,7 +561,10 @@ namespace course
             string text = fb.ReadBook(test);
             readingForm readingForm = new readingForm();
             readingForm.htmlPath = text;
+            readingForm.Instance.Text = "Чтение " + titleBook;
             readingForm.Show();
+            readingForm.Shown += ReadingForm_Shown;
+            readingForm.Closed += ReadingForm_Closed;
         }
 
         private void booksDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -470,7 +584,7 @@ namespace course
                 {
                     booksDataGridView.ClearSelection();
                     booksDataGridView.Rows[rowIndex].Selected = true;
-                    //selectedRow();
+                    selectedRow();
                 }
             }
         }
@@ -481,8 +595,28 @@ namespace course
             string text = fb.ReadBook(test);
             readingForm readingForm = new readingForm();
             readingForm.htmlPath = text;
-            readingForm.tilteBook = titleBook;
+            readingForm.Instance.Text = "Чтение " + titleBook;
             readingForm.Show();
+            readingForm.Shown += ReadingForm_Shown;
+            readingForm.Closed += ReadingForm_Closed;
+        }
+
+        private int openReadingFormCount = 0;
+        private void ReadingForm_Closed(object sender, EventArgs e)
+        {
+            openReadingFormCount--;
+            if (openReadingFormCount == 0)
+            {
+                удалитьКнигуToolStripMenuItem.Enabled = true;
+            }
+        }
+        private void ReadingForm_Shown(object sender, EventArgs e)
+        {
+            openReadingFormCount++;
+            if (openReadingFormCount > 0)
+            {
+                удалитьКнигуToolStripMenuItem.Enabled = false;
+            }
         }
 
         private void удалитьКнигуToolStripMenuItem_Click(object sender, EventArgs e)
@@ -492,9 +626,142 @@ namespace course
             if (result == DialogResult.Yes)
             {
                 // Код для выхода из приложения
-                Console.WriteLine("Пока не робит");
-
+                string pathBook = Path.GetDirectoryName(test);
+                Console.WriteLine(pathBook);
+                int bookId = GetBookIdByFilePath(pathBook);
+                if (bookId != -1)
+                {
+                    // Книга найдена, bookId содержит ее идентификатор
+                    DeleteBook(bookId);
+                    LookBooksDataGridView();
+                }
+                else
+                {
+                    // Книга не найдена
+                    MessageBox.Show("Книга не найдена в базе данных.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
+        }
+        public int GetBookIdByFilePath(string filePath)
+        {
+            int bookId = -1;
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                conn.Open();
+                string query = "SELECT id_book FROM Bookshelf WHERE book_file_path = @FilePath";
+                using (SQLiteCommand cmd = new SQLiteCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@FilePath", filePath);
+                    object result = cmd.ExecuteScalar();
+                    if (result != null)
+                    {
+                        bookId = Convert.ToInt32(result);
+                    }
+                }
+            }
+            return bookId;
+        }
+        public void DeleteBook(int bookId)
+        {
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                conn.Open();
+                SQLiteTransaction transaction = conn.BeginTransaction();
+
+                try
+                {
+                    // Получение информации о книге
+                    string bookDirPath = GetBookDirectoryPath(conn, bookId, transaction);
+                    if (string.IsNullOrEmpty(bookDirPath))
+                    {
+                        throw new Exception("Не удалось получить путь к директории книги.");
+                    }
+                    // Удаление записи из таблицы Bookshelf
+                    DeleteFromBookshelf(conn, bookId, transaction);
+                    // Удаление связей с авторами, жанрами и форматами
+                    DeleteBookRelations(conn, bookId, transaction);
+                    // Удаление файлов книги
+                    DeleteBookFiles(bookDirPath);
+                    // Удаление авторов и жанров, если они не используются в других книгах
+                    DeleteUnusedAuthorsAndGenres(conn, bookId, transaction);
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    throw new Exception("Ошибка при удалении книги: " + ex.Message);
+                }
+            }
+        }
+        private string GetBookDirectoryPath(SQLiteConnection conn, int bookId, SQLiteTransaction transaction)
+        {
+            string query = "SELECT book_file_path FROM Bookshelf WHERE id_book = @BookId";
+            using (SQLiteCommand cmd = new SQLiteCommand(query, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@BookId", bookId);
+                object result = cmd.ExecuteScalar();
+                return result != null ? result.ToString() : string.Empty;
+            }
+        }
+        private void DeleteFromBookshelf(SQLiteConnection conn, int bookId, SQLiteTransaction transaction)
+        {
+            string query = "DELETE FROM Bookshelf WHERE id_book = @BookId";
+            using (SQLiteCommand cmd = new SQLiteCommand(query, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@BookId", bookId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+        private void DeleteBookRelations(SQLiteConnection conn, int bookId, SQLiteTransaction transaction)
+        {
+            string query = "DELETE FROM FilterAuthor WHERE id_book = @BookId; " +
+                           "DELETE FROM FilterGenre WHERE id_book = @BookId; " +
+                           "DELETE FROM FilterFormat WHERE id_book = @BookId;";
+            using (SQLiteCommand cmd = new SQLiteCommand(query, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@BookId", bookId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+        private void DeleteBookFiles(string bookDirPath)
+        {
+            if (Directory.Exists(bookDirPath))
+            {
+                Directory.Delete(bookDirPath, true);
+            }
+        }
+        private void DeleteUnusedAuthorsAndGenres(SQLiteConnection conn, int bookId, SQLiteTransaction transaction)
+        {
+            string deleteUnusedAuthorsQuery = "DELETE FROM Authors WHERE id_author NOT IN (SELECT id_author FROM FilterAuthor GROUP BY id_author)";
+            string deleteUnusedGenresQuery = "DELETE FROM Genres WHERE id_genre NOT IN (SELECT id_genre FROM FilterGenre GROUP BY id_genre)";
+
+            using (SQLiteCommand cmd = new SQLiteCommand(deleteUnusedAuthorsQuery, conn, transaction))
+            {
+                cmd.ExecuteNonQuery();
+            }
+
+            using (SQLiteCommand cmd = new SQLiteCommand(deleteUnusedGenresQuery, conn, transaction))
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private void настройкаПрограммыToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            settingsForm settingsForm = new settingsForm();
+            settingsForm.ShowDialog();
+        }
+
+        private void лицензияToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            LicenseKeyManagerForm licenseForm = new LicenseKeyManagerForm();
+            licenseForm.ShowDialog();
+        }
+
+        private void настройкаЧтенияToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            readingSettingsFrom readingSettingsFrom = new readingSettingsFrom();
+            readingSettingsFrom.ShowDialog();
         }
     }
 }

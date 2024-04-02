@@ -46,7 +46,6 @@
             this.panel2 = new System.Windows.Forms.Panel();
             this.btnReadBook = new System.Windows.Forms.Button();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.bookPictureBox = new System.Windows.Forms.PictureBox();
             this.bookAnnTextBox = new System.Windows.Forms.RichTextBox();
             this.filtersTreeView = new System.Windows.Forms.TreeView();
             this.booksDataGridView = new System.Windows.Forms.DataGridView();
@@ -61,8 +60,10 @@
             this.contextMenuStripDataGrid = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.читатьКнигуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.удалитьКнигуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.bdBooksSource = new System.Windows.Forms.BindingSource(this.components);
             this.splitter1 = new System.Windows.Forms.Splitter();
+            this.лицензияToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.bdBooksSource = new System.Windows.Forms.BindingSource(this.components);
+            this.bookPictureBox = new System.Windows.Forms.PictureBox();
             this.MainMenu.SuspendLayout();
             this.bookInfoPanel.SuspendLayout();
             this.panel1.SuspendLayout();
@@ -71,10 +72,10 @@
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.booksDataGridView)).BeginInit();
             this.contextMenuStripDataGrid.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bdBooksSource)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).BeginInit();
             this.SuspendLayout();
             // 
             // MainMenu
@@ -118,17 +119,20 @@
             this.настройкаПрограммыToolStripMenuItem.Name = "настройкаПрограммыToolStripMenuItem";
             this.настройкаПрограммыToolStripMenuItem.Size = new System.Drawing.Size(202, 22);
             this.настройкаПрограммыToolStripMenuItem.Text = "Настройка программы";
+            this.настройкаПрограммыToolStripMenuItem.Click += new System.EventHandler(this.настройкаПрограммыToolStripMenuItem_Click);
             // 
             // настройкаЧтенияToolStripMenuItem
             // 
             this.настройкаЧтенияToolStripMenuItem.Name = "настройкаЧтенияToolStripMenuItem";
             this.настройкаЧтенияToolStripMenuItem.Size = new System.Drawing.Size(202, 22);
             this.настройкаЧтенияToolStripMenuItem.Text = "Настройка чтения";
+            this.настройкаЧтенияToolStripMenuItem.Click += new System.EventHandler(this.настройкаЧтенияToolStripMenuItem_Click);
             // 
             // справкаToolStripMenuItem
             // 
             this.справкаToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.оПрограммеToolStripMenuItem});
+            this.оПрограммеToolStripMenuItem,
+            this.лицензияToolStripMenuItem});
             this.справкаToolStripMenuItem.Name = "справкаToolStripMenuItem";
             this.справкаToolStripMenuItem.Size = new System.Drawing.Size(65, 20);
             this.справкаToolStripMenuItem.Text = "Справка";
@@ -136,7 +140,7 @@
             // оПрограммеToolStripMenuItem
             // 
             this.оПрограммеToolStripMenuItem.Name = "оПрограммеToolStripMenuItem";
-            this.оПрограммеToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.оПрограммеToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.оПрограммеToolStripMenuItem.Text = "О программе";
             // 
             // bookInfoPanel
@@ -196,17 +200,6 @@
             this.splitContainer1.Size = new System.Drawing.Size(366, 657);
             this.splitContainer1.SplitterDistance = 381;
             this.splitContainer1.TabIndex = 1;
-            // 
-            // bookPictureBox
-            // 
-            this.bookPictureBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.bookPictureBox.Location = new System.Drawing.Point(0, 0);
-            this.bookPictureBox.Margin = new System.Windows.Forms.Padding(10);
-            this.bookPictureBox.Name = "bookPictureBox";
-            this.bookPictureBox.Size = new System.Drawing.Size(366, 381);
-            this.bookPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.bookPictureBox.TabIndex = 0;
-            this.bookPictureBox.TabStop = false;
             // 
             // bookAnnTextBox
             // 
@@ -360,6 +353,24 @@
             this.splitter1.TabIndex = 4;
             this.splitter1.TabStop = false;
             // 
+            // лицензияToolStripMenuItem
+            // 
+            this.лицензияToolStripMenuItem.Name = "лицензияToolStripMenuItem";
+            this.лицензияToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.лицензияToolStripMenuItem.Text = "Лицензия";
+            this.лицензияToolStripMenuItem.Click += new System.EventHandler(this.лицензияToolStripMenuItem_Click);
+            // 
+            // bookPictureBox
+            // 
+            this.bookPictureBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.bookPictureBox.Location = new System.Drawing.Point(0, 0);
+            this.bookPictureBox.Margin = new System.Windows.Forms.Padding(10);
+            this.bookPictureBox.Name = "bookPictureBox";
+            this.bookPictureBox.Size = new System.Drawing.Size(366, 381);
+            this.bookPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.bookPictureBox.TabIndex = 0;
+            this.bookPictureBox.TabStop = false;
+            // 
             // mainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -371,6 +382,7 @@
             this.Controls.Add(this.bookInfoPanel);
             this.Controls.Add(this.MainMenu);
             this.MainMenuStrip = this.MainMenu;
+            this.MinimumSize = new System.Drawing.Size(1280, 720);
             this.Name = "mainForm";
             this.Text = "Библиотека ReadEscape";
             this.Load += new System.EventHandler(this.mainForm_Load);
@@ -383,10 +395,10 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.booksDataGridView)).EndInit();
             this.contextMenuStripDataGrid.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.bdBooksSource)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -425,6 +437,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn formats;
         private System.Windows.Forms.DataGridViewTextBoxColumn Language;
         private System.Windows.Forms.Splitter splitter1;
+        private System.Windows.Forms.ToolStripMenuItem лицензияToolStripMenuItem;
     }
 }
 
