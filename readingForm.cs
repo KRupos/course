@@ -13,6 +13,7 @@ namespace course
     public partial class readingForm : Form
     {
         public string htmlPath;
+        public string tilteBook;
         public readingForm()
         {
             InitializeComponent();
@@ -21,6 +22,8 @@ namespace course
 
         private void readingForm_Load(object sender, EventArgs e)
         {
+            
+            this.Text = "Чтение " + tilteBook;
             webBrowser1.Navigate(htmlPath);
         }
     }

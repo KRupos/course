@@ -134,6 +134,7 @@
     <EmbeddedResource Include="readingForm.resx">
       <DependentUpon>readingForm.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="locale\meta.db" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

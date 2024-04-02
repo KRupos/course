@@ -50,14 +50,19 @@
             this.bookAnnTextBox = new System.Windows.Forms.RichTextBox();
             this.filtersTreeView = new System.Windows.Forms.TreeView();
             this.booksDataGridView = new System.Windows.Forms.DataGridView();
-            this.TitleBook = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.uuid = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.file_path = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.title = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.AuthorsBook = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Size = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.release_year = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.genres = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.formats = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Language = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.contextMenuStripDataGrid = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.читатьКнигуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.удалитьКнигуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bdBooksSource = new System.Windows.Forms.BindingSource(this.components);
+            this.splitter1 = new System.Windows.Forms.Splitter();
             this.MainMenu.SuspendLayout();
             this.bookInfoPanel.SuspendLayout();
             this.panel1.SuspendLayout();
@@ -68,6 +73,7 @@
             this.splitContainer1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.booksDataGridView)).BeginInit();
+            this.contextMenuStripDataGrid.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bdBooksSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -237,19 +243,19 @@
             // 
             this.booksDataGridView.AllowUserToAddRows = false;
             this.booksDataGridView.AllowUserToDeleteRows = false;
-            this.booksDataGridView.AllowUserToResizeColumns = false;
             this.booksDataGridView.AllowUserToResizeRows = false;
             this.booksDataGridView.AutoGenerateColumns = false;
-            this.booksDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.booksDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.booksDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.TitleBook,
-            this.uuid,
             this.file_path,
+            this.title,
             this.AuthorsBook,
             this.Size,
             this.release_year,
+            this.genres,
+            this.formats,
             this.Language});
+            this.booksDataGridView.ContextMenuStrip = this.contextMenuStripDataGrid;
             this.booksDataGridView.DataSource = this.bdBooksSource;
             this.booksDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.booksDataGridView.Location = new System.Drawing.Point(249, 24);
@@ -258,22 +264,9 @@
             this.booksDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.booksDataGridView.Size = new System.Drawing.Size(649, 657);
             this.booksDataGridView.TabIndex = 3;
+            this.booksDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.booksDataGridView_CellContentClick);
             this.booksDataGridView.RowEnter += new System.Windows.Forms.DataGridViewCellEventHandler(this.booksDataGridView_RowEnter);
-            // 
-            // TitleBook
-            // 
-            this.TitleBook.DataPropertyName = "Title";
-            this.TitleBook.HeaderText = "Название";
-            this.TitleBook.Name = "TitleBook";
-            this.TitleBook.ReadOnly = true;
-            // 
-            // uuid
-            // 
-            this.uuid.DataPropertyName = "uuid";
-            this.uuid.HeaderText = "";
-            this.uuid.Name = "uuid";
-            this.uuid.ReadOnly = true;
-            this.uuid.Visible = false;
+            this.booksDataGridView.MouseDown += new System.Windows.Forms.MouseEventHandler(this.booksDataGridView_MouseDown);
             // 
             // file_path
             // 
@@ -283,39 +276,96 @@
             this.file_path.ReadOnly = true;
             this.file_path.Visible = false;
             // 
+            // title
+            // 
+            this.title.DataPropertyName = "title";
+            this.title.HeaderText = "Название";
+            this.title.Name = "title";
+            this.title.ReadOnly = true;
+            // 
             // AuthorsBook
             // 
-            this.AuthorsBook.DataPropertyName = "Authors";
+            this.AuthorsBook.DataPropertyName = "authors";
             this.AuthorsBook.HeaderText = "Автор(ы)";
             this.AuthorsBook.Name = "AuthorsBook";
             this.AuthorsBook.ReadOnly = true;
+            this.AuthorsBook.Width = 121;
             // 
             // Size
             // 
-            this.Size.DataPropertyName = "Size";
+            this.Size.DataPropertyName = "size";
             this.Size.HeaderText = "Размер (МБ)";
             this.Size.Name = "Size";
             this.Size.ReadOnly = true;
+            this.Size.Width = 122;
             // 
             // release_year
             // 
-            this.release_year.DataPropertyName = "release_year";
+            this.release_year.DataPropertyName = "ryear";
             this.release_year.HeaderText = "Год выхода";
             this.release_year.Name = "release_year";
             this.release_year.ReadOnly = true;
+            this.release_year.Width = 121;
+            // 
+            // genres
+            // 
+            this.genres.DataPropertyName = "genres";
+            this.genres.HeaderText = "Жанр(ы)";
+            this.genres.Name = "genres";
+            this.genres.ReadOnly = true;
+            // 
+            // formats
+            // 
+            this.formats.DataPropertyName = "formats";
+            this.formats.HeaderText = "Формат(ы)";
+            this.formats.Name = "formats";
+            this.formats.ReadOnly = true;
             // 
             // Language
             // 
-            this.Language.DataPropertyName = "Language";
+            this.Language.DataPropertyName = "lang";
             this.Language.HeaderText = "Язык";
             this.Language.Name = "Language";
             this.Language.ReadOnly = true;
+            this.Language.Width = 121;
+            // 
+            // contextMenuStripDataGrid
+            // 
+            this.contextMenuStripDataGrid.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.читатьКнигуToolStripMenuItem,
+            this.удалитьКнигуToolStripMenuItem});
+            this.contextMenuStripDataGrid.Name = "contextMenuStripDataGrid";
+            this.contextMenuStripDataGrid.Size = new System.Drawing.Size(153, 48);
+            // 
+            // читатьКнигуToolStripMenuItem
+            // 
+            this.читатьКнигуToolStripMenuItem.Name = "читатьКнигуToolStripMenuItem";
+            this.читатьКнигуToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.читатьКнигуToolStripMenuItem.Text = "Читать книгу";
+            this.читатьКнигуToolStripMenuItem.Click += new System.EventHandler(this.читатьКнигуToolStripMenuItem_Click);
+            // 
+            // удалитьКнигуToolStripMenuItem
+            // 
+            this.удалитьКнигуToolStripMenuItem.Name = "удалитьКнигуToolStripMenuItem";
+            this.удалитьКнигуToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.удалитьКнигуToolStripMenuItem.Text = "Удалить книгу";
+            this.удалитьКнигуToolStripMenuItem.Click += new System.EventHandler(this.удалитьКнигуToolStripMenuItem_Click);
+            // 
+            // splitter1
+            // 
+            this.splitter1.Dock = System.Windows.Forms.DockStyle.Right;
+            this.splitter1.Location = new System.Drawing.Point(895, 24);
+            this.splitter1.Name = "splitter1";
+            this.splitter1.Size = new System.Drawing.Size(3, 657);
+            this.splitter1.TabIndex = 4;
+            this.splitter1.TabStop = false;
             // 
             // mainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1264, 681);
+            this.Controls.Add(this.splitter1);
             this.Controls.Add(this.booksDataGridView);
             this.Controls.Add(this.filtersTreeView);
             this.Controls.Add(this.bookInfoPanel);
@@ -335,6 +385,7 @@
             this.splitContainer1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.bookPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.booksDataGridView)).EndInit();
+            this.contextMenuStripDataGrid.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.bdBooksSource)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -358,17 +409,22 @@
         private System.Windows.Forms.RichTextBox bookAnnTextBox;
         private System.Windows.Forms.PictureBox bookPictureBox;
         private System.Windows.Forms.BindingSource bdBooksSource;
-        private System.Windows.Forms.DataGridViewTextBoxColumn TitleBook;
-        private System.Windows.Forms.DataGridViewTextBoxColumn uuid;
-        private System.Windows.Forms.DataGridViewTextBoxColumn file_path;
-        private System.Windows.Forms.DataGridViewTextBoxColumn AuthorsBook;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Size;
-        private System.Windows.Forms.DataGridViewTextBoxColumn release_year;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Language;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button btnReadBook;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStripDataGrid;
+        private System.Windows.Forms.ToolStripMenuItem читатьКнигуToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem удалитьКнигуToolStripMenuItem;
+        private System.Windows.Forms.DataGridViewTextBoxColumn file_path;
+        private System.Windows.Forms.DataGridViewTextBoxColumn title;
+        private System.Windows.Forms.DataGridViewTextBoxColumn AuthorsBook;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Size;
+        private System.Windows.Forms.DataGridViewTextBoxColumn release_year;
+        private System.Windows.Forms.DataGridViewTextBoxColumn genres;
+        private System.Windows.Forms.DataGridViewTextBoxColumn formats;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Language;
+        private System.Windows.Forms.Splitter splitter1;
     }
 }
 

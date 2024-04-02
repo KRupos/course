@@ -13,5 +13,6 @@ namespace course
         bool CanReadFormat(string filePath);
         Book InfoBook(string filePath);
         string ReadBook(string filePath);
+        string FilterFormat();
     }
 }

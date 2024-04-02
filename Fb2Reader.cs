@@ -192,21 +192,6 @@ namespace course
             string path = Path.Combine(Path.GetDirectoryName(filePath), "temp");
             Directory.CreateDirectory(path);
 
-
-            string pattern = @"\w*cover\w*\.\w+";
-            //var imagesElements = doc.Root?.Elements(fbNS + "binary")?.Where(p =>
-            //{
-            //    XAttribute idAttribute = p.Attribute("id");
-            //    if (idAttribute != null)
-            //    {
-            //        string idValue = idAttribute.Value;
-            //        return !Regex.IsMatch(idValue, pattern);
-            //    }
-            //    else
-            //    {
-            //        return false;
-            //    }
-            //});
             var imagesElements = doc.Root?.Elements(fbNS + "binary");
 
             foreach (var imageElement in imagesElements)
@@ -353,6 +338,11 @@ namespace course
             StringBuilder childHtml = new StringBuilder();
             ConvertBody(element, childHtml);
             return childHtml.ToString();
-        }       
+        }
+
+        public string FilterFormat()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

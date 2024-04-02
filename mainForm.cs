@@ -24,6 +24,7 @@ namespace course
 
         private List<IBookFormatPlugin> _plugins = new List<IBookFormatPlugin>();
         private string test;
+        private string titleBook;
 
         private List<IBookFormatPlugin> LoadPlugins(string pluginsDirectory)
         {
@@ -58,46 +59,16 @@ namespace course
         }
 
         private void mainForm_Load(object sender, EventArgs e)
-        {
-           
+        {            
             CheckIfDataExists();
         }
 
         private void CheckIfDataExists()
         {
-            if (!File.Exists(Path.Combine(AppSettings.LibraryDirectory(), "meta.db")))
+            string path = Path.Combine(AppSettings.LibraryDirectory(), "meta.db");
+            if (!File.Exists(path))
             {
-                SQLiteConnection.CreateFile(Path.Combine(AppSettings.LibraryDirectory(), "meta.db"));
-                using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
-                {
-                    string commandline = "CREATE TABLE Bookshelf (id INTEGER PRIMARY KEY, " +
-                        "title TEXT NOT NULL, " +
-                        "uuid TEXT NOT NULL, " +
-                        "authors TEXT NOT NULL, " +
-                        "size REAL NOT NULL, " +
-                        "language TEXT NOT NULL, " +
-                        "release_year TEXT, " +
-                        "format TEXT NOT NULL, " +
-                        "file_path TEXT NOT NULL)";
-                    using (SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
-                    {
-                        conn.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
-                {
-                    string commandline = "CREATE TABLE MetaData (id INTEGER PRIMARY KEY, " +
-                        "file_path_cover TEXT NOT NULL, " +
-                        "file_path_uuid TEXT NOT NULL, " +
-                        "file_path_annotation TEXT NOT NULL, " +
-                        "file_path_book TEXT NOT NULL)";
-                    using (SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
-                    {
-                        conn.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                File.Copy(AppSettings.DefaultDBPath(), path, true);
             }
             else
             {
@@ -108,7 +79,7 @@ namespace course
         private void LookBooksDataGridView()
         {
             booksDataGridView.DataSource = GetDataFromDataBase();
-            selectedRow();
+            //selectedRow();
         }
 
         private void selectedRow()
@@ -120,7 +91,7 @@ namespace course
                 DataGridViewRow selectedRow = booksDataGridView.SelectedRows[0];
                 string columnName = "file_path";
                 file_path = selectedRow.Cells[columnName].Value;
-                columnName = "TitleBook";
+                columnName = "title";
                 title = selectedRow.Cells[columnName].Value;
 
                 if (file_path != null)
@@ -138,6 +109,7 @@ namespace course
                     bookAnnTextBox.Text = textAnnotation;
                     btnReadBook.Enabled = true;
                     test = Path.Combine(file_path.ToString(), title.ToString() + ".fb2");
+                    titleBook = title.ToString();
                 }
             }
             else
@@ -186,7 +158,7 @@ namespace course
             DataTable dtBooks = new DataTable();
             using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
             {
-                string commandline = "SELECT * FROM Bookshelf";
+                string commandline = "SELECT * FROM view_library";
                 using(SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
                 {
                     conn.Open();
@@ -224,7 +196,7 @@ namespace course
         {
             List<string> files = new List<string>();
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = AppSettings.OpenBookFilter();
+            ofd.Filter = AppSettings.OpenBookFilter(_plugins);
             ofd.Multiselect = true;
 
             if (ofd.ShowDialog() == DialogResult.OK)
@@ -234,6 +206,7 @@ namespace course
                     AddBook(file, _plugins);
                 }
             }
+            LookBooksDataGridView();
         }
 
         public void AddBook(string filePath, List<IBookFormatPlugin> plugins)
@@ -243,44 +216,40 @@ namespace course
 
             if (book != null)
             {
-                //Создание директории для книги
-                Translit translit = new Translit();
-                string trAuthor = translit.TranslitFileName(book.Authors);
-                string[] authors = trAuthor.Split(',').Select(a => a.Trim()).ToArray();
-                int maxAuthors = 3; // Максимальное количество авторов
-                // Проверяем, что авторов не больше maxAuthors
-                string[] firstAuthors = authors.Length <= maxAuthors ? authors : authors.Take(maxAuthors).ToArray();
-                // Объединяем авторов в строку
-                string firstAuthorsString = string.Join(", ", firstAuthors);
-                string authorDir = Path.Combine(AppSettings.LibraryDirectory(), firstAuthorsString);
-                Directory.CreateDirectory(authorDir);
-
-                string trTitle = translit.TranslitFileName(book.Title);
-                string bookDir = Path.Combine(authorDir, trTitle);
-                Directory.CreateDirectory(bookDir);
-
-                //Копирование файла книги
-                string extension = Path.GetExtension(filePath).ToLower();
-                string destFilePath = Path.Combine(bookDir, $"{book.Title}{extension}");
-                File.Copy(filePath, destFilePath, true);
-                //Сохранение обложки(если есть)
-                string coverDestPath = Path.Combine(bookDir, "cover.jpg");
-                if (!string.IsNullOrEmpty(book.CoverImage))
-                {
-                    File.Copy(book.CoverImage, coverDestPath, true);
-                    File.Delete(book.CoverImage);
-                    book.CoverImage = coverDestPath.Replace(book.CoverImage, coverDestPath);
-                }
-                //Сериализация информации о книге в XML
-                string infoFilePath = Path.Combine(bookDir, "info.xml");
-                SerializeBookInfo(book, infoFilePath);
-
-                string uuid = Guid.NewGuid().ToString();
-
                 if (!IsBookExists(book.Title, book.Authors))
                 {
-                    AddBook2BD(book, bookDir, uuid);
-                    AddMeta2BD(destFilePath, coverDestPath, infoFilePath, uuid);
+                    //Создание директории для книги
+                    Translit translit = new Translit();
+                    string trAuthor = translit.TranslitFileName(book.Authors);
+                    string[] authors = trAuthor.Split(',').Select(a => a.Trim()).ToArray();
+                    int maxAuthors = 3; // Максимальное количество авторов
+                                        // Проверяем, что авторов не больше maxAuthors
+                    string[] firstAuthors = authors.Length <= maxAuthors ? authors : authors.Take(maxAuthors).ToArray();
+                    // Объединяем авторов в строку
+                    string firstAuthorsString = string.Join(", ", firstAuthors);
+                    string authorDir = Path.Combine(AppSettings.LibraryDirectory(), firstAuthorsString);
+                    Directory.CreateDirectory(authorDir);
+
+                    string trTitle = translit.TranslitFileName(book.Title);
+                    string bookDir = Path.Combine(authorDir, trTitle);
+                    Directory.CreateDirectory(bookDir);
+                    //Копирование файла книги
+                    string extension = Path.GetExtension(filePath).ToLower();
+                    string destFilePath = Path.Combine(bookDir, $"{book.Title}{extension}");
+                    File.Copy(filePath, destFilePath, true);
+                    //Сохранение обложки(если есть)
+                    string coverDestPath = Path.Combine(bookDir, "cover.jpg");
+                    if (!string.IsNullOrEmpty(book.CoverImage))
+                    {
+                        File.Copy(book.CoverImage, coverDestPath, true);
+                        File.Delete(book.CoverImage);
+                        book.CoverImage = coverDestPath.Replace(book.CoverImage, coverDestPath);
+                    }
+                    //Сериализация информации о книге в XML
+                    string infoFilePath = Path.Combine(bookDir, "info.xml");
+                    SerializeBookInfo(book, infoFilePath);
+
+                    AddBook2BD(book, bookDir);
                 }
                 else
                 {
@@ -290,58 +259,153 @@ namespace course
             }
         }
 
-        private void AddMeta2BD(string destFilePath, string coverDestPath, string infoFilePath, string uuid)
+        private void AddBook2BD(Book book, string bookDir)
         {
+            int bookId;
             using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
             {
-                string commandline = "INSERT INTO MetaData ([file_path_cover], [file_path_uuid], [file_path_annotation], [file_path_book]) " +
-                    "VALUES (@file_path_cover, @file_path_uuid, @file_path_annotation, @file_path_book);";
+                string commandline = "INSERT INTO Bookshelf ([title], [size], [language], [release_year], [file_path]) " +
+                    "VALUES (@title, @size, @language, @release_year, @file_path)" +
+                    "SELECT last_insert_rowid();";
                 using (SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
                 {
                     conn.Open();
-                    cmd.Parameters.AddWithValue("@file_path_uuid", uuid);
-                    cmd.Parameters.AddWithValue("@file_path_book", destFilePath);
-                    cmd.Parameters.AddWithValue("@file_path_cover", coverDestPath);
-                    cmd.Parameters.AddWithValue("@file_path_annotation", infoFilePath);
-                    cmd.ExecuteNonQuery();
-                }
-            }
-        }
-
-        private void AddBook2BD(Book book, string bookDir, string uuid)
-        {
-            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
-            {
-                string commandline = "INSERT INTO Bookshelf ([uuid], [title], [authors], [size], [language], [release_year], [format], [file_path]) " +
-                    "VALUES (@uuid, @title, @authors, @size, @language, @release_year, @format, @file_path);";
-                using (SQLiteCommand cmd = new SQLiteCommand(commandline, conn))
-                {
-                    conn.Open();
-                    cmd.Parameters.AddWithValue("@uuid", uuid);
                     cmd.Parameters.AddWithValue("@title", book.Title);
-                    cmd.Parameters.AddWithValue("@authors", book.Authors);
                     cmd.Parameters.AddWithValue("@size", book.Size);
                     cmd.Parameters.AddWithValue("@language", book.Language);
                     cmd.Parameters.AddWithValue("@release_year", book.Year);
-                    cmd.Parameters.AddWithValue("@format", book.Format);
                     cmd.Parameters.AddWithValue("@file_path", bookDir);
                     cmd.ExecuteNonQuery();
-
+                    bookId = Convert.ToInt32(cmd.ExecuteScalar());
                 }
             }
-            LookBooksDataGridView();
+            AddAuthors(book.Authors, bookId);
+            AddGenres(book.Genre, bookId);            
         }
 
-        private bool IsBookExists(string title, string authors)
+        public void AddAuthors(string authorsString, int bookId)
         {
             using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
             {
-                string query = "SELECT COUNT(*) FROM Bookshelf WHERE title = @title AND authors = @authors";
+                conn.Open();
+                // Разбиение строки авторов на отдельные имена
+                var authors = authorsString.Split(',');
+                foreach (var author in authors)
+                {
+                    var authorName = author.Trim();
+                    // Проверка наличия автора в таблице Authors
+                    var authorId = GetAuthorIdByName(conn, authorName);
+                    if (authorId == -1)
+                    {
+                        // Если автор не найден, добавляем нового автора
+                        authorId = InsertAuthor(conn, authorName);
+                    }
+                    // Связываем автора с книгой в таблице FilterAuthor
+                    InsertFilterAuthor(conn, bookId, authorId);
+                }
+            }
+        }
+        private int GetAuthorIdByName(SQLiteConnection conn, string authorName)
+        {
+            using (var command = new SQLiteCommand("SELECT id_author FROM Authors WHERE author_fullname = @AuthorName", conn))
+            {
+                command.Parameters.AddWithValue("@AuthorName", authorName);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return reader.GetInt32(0);
+                    }
+                }
+            }
+            return -1; // Автор не найден
+        }
+        private int InsertAuthor(SQLiteConnection conn, string authorName)
+        {
+            using (var command = new SQLiteCommand("INSERT INTO Authors (author_fullname) VALUES (@AuthorName); SELECT last_insert_rowid()", conn))
+            {
+                command.Parameters.AddWithValue("@AuthorName", authorName);
+                return Convert.ToInt32(command.ExecuteScalar());
+            }
+        }
+        private void InsertFilterAuthor(SQLiteConnection conn, int bookId, int authorId)
+        {
+            using (var command = new SQLiteCommand("INSERT INTO FilterAuthor (id_book, id_author) VALUES (@BookId, @AuthorId)", conn))
+            {
+                command.Parameters.AddWithValue("@BookId", bookId);
+                command.Parameters.AddWithValue("@AuthorId", authorId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public void AddGenres(string genressString, int bookId)
+        {
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                conn.Open();
+                // Разбиение строки авторов на отдельные имена
+                var genres = genressString.Split(',');
+                foreach (var genre in genres)
+                {
+                    var genreName = genre.Trim();
+                    // Проверка наличия автора в таблице Authors
+                    var genreId = GetGenreIdByName(conn, genreName);
+                    if (genreId == -1)
+                    {
+                        // Если автор не найден, добавляем нового автора
+                        genreId = InsertGenre(conn, genreName);
+                    }
+                    // Связываем автора с книгой в таблице FilterAuthor
+                    InsertFilterGenres(conn, bookId, genreId);
+                }
+            }
+        }
+        private int GetGenreIdByName(SQLiteConnection conn, string genreName)
+        {
+            using (var command = new SQLiteCommand("SELECT id_genre FROM Genres WHERE genre_bname = @GenreName", conn))
+            {
+                command.Parameters.AddWithValue("@GenreName", genreName);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return reader.GetInt32(0);
+                    }
+                }
+            }
+            return -1; // Автор не найден
+        }
+        private int InsertGenre(SQLiteConnection conn, string genreName)
+        {
+            GenreTrenslit translitGenre = new GenreTrenslit();
+            using (var command = new SQLiteCommand("INSERT INTO Genres (genre_bname, genre_tname) VALUES (@GenreBName, @GenreTName); SELECT last_insert_rowid()", conn))
+            {
+                command.Parameters.AddWithValue("@GenreBName", genreName);
+                command.Parameters.AddWithValue("@GenreTName", translitGenre.TranslitGenre(genreName));
+                return Convert.ToInt32(command.ExecuteScalar());
+            }
+        }
+        private void InsertFilterGenres(SQLiteConnection conn, int bookId, int genreId)
+        {
+            using (var command = new SQLiteCommand("INSERT INTO FilterGenre (id_book, id_genre) VALUES (@BookId, @GenreId)", conn))
+            {
+                command.Parameters.AddWithValue("@BookId", bookId);
+                command.Parameters.AddWithValue("@GenreId", genreId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private bool IsBookExists(string title, string authors/*, string format*/)
+        {
+            using (SQLiteConnection conn = new SQLiteConnection(AppSettings.ConnectionString()))
+            {
+                string query = "SELECT COUNT(*) FROM Bookshelf WHERE title = @title AND authors = @authors"/* AND format = @format"*/;
                 conn.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@title", title);
                     cmd.Parameters.AddWithValue("@authors", authors);
+                    //cmd.Parameters.AddWithValue("@format", format);
                     int count = Convert.ToInt32(cmd.ExecuteScalar());
                     return count > 0;
                 }
@@ -377,7 +441,7 @@ namespace course
 
         private void booksDataGridView_RowEnter(object sender, DataGridViewCellEventArgs e)
         {
-            selectedRow();
+            //selectedRow();
         }
 
         private void btnReadBook_Click(object sender, EventArgs e)
@@ -387,6 +451,50 @@ namespace course
             readingForm readingForm = new readingForm();
             readingForm.htmlPath = text;
             readingForm.Show();
+        }
+
+        private void booksDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            selectedRow();
+        }
+
+        private void booksDataGridView_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
+            {
+                // Определяем номер строки, на которой произошел щелчок
+                int rowIndex = booksDataGridView.HitTest(e.X, e.Y).RowIndex;
+
+                // Выделяем строку
+                if (rowIndex >= 0)
+                {
+                    booksDataGridView.ClearSelection();
+                    booksDataGridView.Rows[rowIndex].Selected = true;
+                    //selectedRow();
+                }
+            }
+        }
+
+        private void читатьКнигуToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Fb2Reader fb = new Fb2Reader();
+            string text = fb.ReadBook(test);
+            readingForm readingForm = new readingForm();
+            readingForm.htmlPath = text;
+            readingForm.tilteBook = titleBook;
+            readingForm.Show();
+        }
+
+        private void удалитьКнигуToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Вы уверены, что хотите удалить книгу?", "Подтверждение удаления строки", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                // Код для выхода из приложения
+                Console.WriteLine("Пока не робит");
+
+            }
         }
     }
 }
